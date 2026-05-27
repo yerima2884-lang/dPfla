@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>스도쿠</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Segoe UI', sans-serif;
+      color: #e0e0e0;
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      letter-spacing: 4px;
+      margin-bottom: 16px;
+      color: #e94560;
+      text-shadow: 0 0 20px rgba(233,69,96,0.5);
+    }
+
+    .info-bar {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      margin-bottom: 20px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 10px 24px;
+    }
+
+    .info-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .info-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #888;
+    }
+
+    .info-value {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #e0e0e0;
+    }
+
+    #timer { color: #4fc3f7; }
+    #mistake-count { color: #ef9a9a; }
+
+    .difficulty-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .diff-btn {
+      padding: 7px 20px;
+      border-radius: 20px;
+      border: 2px solid transparent;
+      background: rgba(255,255,255,0.08);
+      color: #ccc;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .diff-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+
+    .diff-btn.active {
+      background: #e94560;
+      border-color: #e94560;
+      color: #fff;
+      box-shadow: 0 0 12px rgba(233,69,96,0.5);
+    }
+
+    .board-wrapper {
+      background: rgba(255,255,255,0.04);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(9, 1fr);
+      gap: 2px;
+      border: 3px solid #e94560;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .cell {
+      width: 52px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: #12192b;
+      color: #e0e0e0;
+      border: 1px solid #1e2d4a;
+      transition: background 0.15s;
+      user-select: none;
+    }
+
+    .cell:nth-child(3n) { border-right: 2px solid #e94560; }
+    .cell:nth-child(9n) { border-right: 1px solid #1e2d4a; }
+    .cell[data-row="2"], .cell[data-row="5"] { border-bottom: 2px solid #e94560; }
+
+    .cell.given    { color: #81d4fa; cursor: default; background: #0d1a2d; }
+    .cell.selected { background: #1b3a5c !important; }
+    .cell.highlight{ background: #152235; }
+    .cell.error    { color: #ef5350 !important; }
+    .cell.correct  { color: #66bb6a; }
+    .cell.hint     { color: #ffb74d; }
+
+    .numpad {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+      justify-content: center;
+    }
+
+    .num-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      border: none;
+      background: rgba(255,255,255,0.08);
+      color: #e0e0e0;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .num-btn:hover { background: #e94560; color: #fff; transform: scale(1.1); }
+    .num-btn.erase { font-size: 0.85rem; background: rgba(239,83,80,0.2); color: #ef5350; }
+    .num-btn.erase:hover { background: #ef5350; color: #fff; }
+
+    .action-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+      justify-content: center;
+    }
+
+    .action-btn {
+      padding: 9px 22px;
+      border-radius: 10px;
+      border: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    #btn-new   { background: #e94560; color: #fff; }
+    #btn-new:hover   { background: #c73652; }
+    #btn-hint  { background: rgba(255,183,74,0.15); color: #ffb74d; border: 1px solid #ffb74d44; }
+    #btn-hint:hover  { background: #ffb74d; color: #1a1a2e; }
+    #btn-solve { background: rgba(102,187,106,0.15); color: #66bb6a; border: 1px solid #66bb6a44; }
+    #btn-solve:hover { background: #66bb6a; color: #1a1a2e; }
+
+    #overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      align-items: center;
+      justify-content: center;
+      z-index: 99;
+    }
+
+    #overlay.show { display: flex; }
+
+    .overlay-box {
+      background: #16213e;
+      border: 2px solid #e94560;
+      border-radius: 20px;
+      padding: 40px 50px;
+      text-align: center;
+      box-shadow: 0 0 60px rgba(233,69,96,0.3);
+      animation: pop 0.3s ease;
+    }
+
+    @keyframes pop {
+      from { transform: scale(0.7); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+
+    .overlay-box h2 { font-size: 2rem; color: #e94560; margin-bottom: 10px; }
+    .overlay-box p  { color: #aaa; margin-bottom: 24px; font-size: 1rem; }
+    .overlay-box button {
+      padding: 10px 30px;
+      border-radius: 30px;
+      border: none;
+      background: #e94560;
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .overlay-box button:hover { background: #c73652; }
+
+    @media (max-width: 520px) {
+      .cell { width: 38px; height: 38px; font-size: 1rem; }
+      h1 { font-size: 1.6rem; }
+    }
+  </style>
+</head>
+<body>
+
+<h1>스도쿠</h1>
+
+<div class="info-bar">
+  <div class="info-item">
+    <span class="info-label">시간</span>
+    <span class="info-value" id="timer">00:00</span>
+  </div>
+  <div class="info-item">
+    <span class="info-label">오류</span>
+    <span class="info-value" id="mistake-count">0 / 3</span>
+  </div>
+  <div class="info-item">
+    <span class="info-label">난이도</span>
+    <span class="info-value" id="diff-label">보통</span>
+  </div>
+</div>
+
+<div class="difficulty-row">
+  <button class="diff-btn" data-remove="30">쉬움</button>
+  <button class="diff-btn active" data-remove="45">보통</button>
+  <button class="diff-btn" data-remove="55">어려움</button>
+</div>
+
+<div class="board-wrapper">
+  <div id="board"></div>
+</div>
+
+<div class="numpad">
+  <button class="num-btn" data-n="1">1</button>
+  <button class="num-btn" data-n="2">2</button>
+  <button class="num-btn" data-n="3">3</button>
+  <button class="num-btn" data-n="4">4</button>
+  <button class="num-btn" data-n="5">5</button>
+  <button class="num-btn" data-n="6">6</button>
+  <button class="num-btn" data-n="7">7</button>
+  <button class="num-btn" data-n="8">8</button>
+  <button class="num-btn" data-n="9">9</button>
+  <button class="num-btn erase" data-n="0">지우기</button>
+</div>
+
+<div class="action-row">
+  <button class="action-btn" id="btn-new">새 게임</button>
+  <button class="action-btn" id="btn-hint">힌트</button>
+  <button class="action-btn" id="btn-solve">정답 보기</button>
+</div>
+
+<div id="overlay">
+  <div class="overlay-box">
+    <h2>완성!</h2>
+    <p id="overlay-msg">스도쿠를 완성했습니다!</p>
+    <button id="overlay-new">다시 하기</button>
+  </div>
+</div>
+
+<script>
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.random() * (i + 1) | 0;
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function isValid(board, row, col, num) {
+  for (let i = 0; i < 9; i++) {
+    if (board[row][i] === num) return false;
+    if (board[i][col] === num) return false;
+  }
+  const br = row - row % 3, bc = col - col % 3;
+  for (let r = 0; r < 3; r++)
+    for (let c = 0; c < 3; c++)
+      if (board[br + r][bc + c] === num) return false;
+  return true;
+}
+
+function generateFull() {
+  const board = Array.from({length: 9}, () => Array(9).fill(0));
+  function fill(pos) {
+    if (pos === 81) return true;
+    const row = pos / 9 | 0, col = pos % 9;
+    const nums = shuffle([1,2,3,4,5,6,7,8,9]);
+    for (const n of nums) {
+      if (isValid(board, row, col, n)) {
+        board[row][col] = n;
+        if (fill(pos + 1)) return true;
+        board[row][col] = 0;
+      }
+    }
+    return false;
+  }
+  fill(0);
+  return board;
+}
+
+function countSolutions(board, limit) {
+  limit = limit || 2;
+  let count = 0;
+  function solve(pos) {
+    if (count >= limit) return;
+    if (pos === 81) { count++; return; }
+    const row = pos / 9 | 0, col = pos % 9;
+    if (board[row][col] !== 0) { solve(pos + 1); return; }
+    for (let n = 1; n <= 9; n++) {
+      if (isValid(board, row, col, n)) {
+        board[row][col] = n;
+        solve(pos + 1);
+        board[row][col] = 0;
+      }
+    }
+  }
+  solve(0);
+  return count;
+}
+
+function createPuzzle(removeCount) {
+  const solution = generateFull();
+  const puzzle = solution.map(function(r) { return r.slice(); });
+  const cells = shuffle(Array.from({length: 81}, function(_, i) { return i; }));
+  let removed = 0;
+  for (let i = 0; i < cells.length; i++) {
+    if (removed >= removeCount) break;
+    const idx = cells[i];
+    const row = idx / 9 | 0, col = idx % 9;
+    const backup = puzzle[row][col];
+    puzzle[row][col] = 0;
+    const copy = puzzle.map(function(r) { return r.slice(); });
+    if (countSolutions(copy) !== 1) {
+      puzzle[row][col] = backup;
+    } else {
+      removed++;
+    }
+  }
+  return { puzzle: puzzle, solution: solution };
+}
+
+var puzzle, solution, userBoard;
+var selectedCell = null;
+var mistakes = 0;
+var maxMistakes = 3;
+var timerSec = 0;
+var timerInterval = null;
+var removeCount = 45;
+var diffLabel = '보통';
+var gameOver = false;
+
+var boardEl = document.getElementById('board');
+var timerEl = document.getElementById('timer');
+var mistakeEl = document.getElementById('mistake-count');
+var diffLabelEl = document.getElementById('diff-label');
+var overlay = document.getElementById('overlay');
+var overlayMsg = document.getElementById('overlay-msg');
+
+function pad(n) { return String(n).padStart(2, '0'); }
+
+function startTimer() {
+  clearInterval(timerInterval);
+  timerSec = 0;
+  timerEl.textContent = '00:00';
+  timerInterval = setInterval(function() {
+    timerSec++;
+    var m = timerSec / 60 | 0, s = timerSec % 60;
+    timerEl.textContent = pad(m) + ':' + pad(s);
+  }, 1000);
+}
+
+function stopTimer() { clearInterval(timerInterval); }
+
+function buildBoard() {
+  boardEl.innerHTML = '';
+  for (var r = 0; r < 9; r++) {
+    for (var c = 0; c < 9; c++) {
+      (function(r, c) {
+        var cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.setAttribute('data-row', r);
+        cell.setAttribute('data-col', c);
+        var val = puzzle[r][c];
+        if (val !== 0) {
+          cell.textContent = val;
+          cell.classList.add('given');
+        }
+        cell.addEventListener('click', function() { selectCell(r, c); });
+        boardEl.appendChild(cell);
+      })(r, c);
+    }
+  }
+}
+
+function getCell(r, c) {
+  return boardEl.querySelector('.cell[data-row="' + r + '"][data-col="' + c + '"]');
+}
+
+function selectCell(r, c) {
+  if (gameOver) return;
+  selectedCell = {r: r, c: c};
+  highlight(r, c);
+}
+
+function highlight(r, c) {
+  boardEl.querySelectorAll('.cell').forEach(function(el) {
+    el.classList.remove('selected', 'highlight');
+  });
+  for (var i = 0; i < 9; i++) {
+    var a = getCell(r, i); if (a) a.classList.add('highlight');
+    var b = getCell(i, c); if (b) b.classList.add('highlight');
+  }
+  var br = r - r % 3, bc = c - c % 3;
+  for (var dr = 0; dr < 3; dr++)
+    for (var dc = 0; dc < 3; dc++) {
+      var x = getCell(br + dr, bc + dc);
+      if (x) x.classList.add('highlight');
+    }
+  var val = userBoard[r][c] || puzzle[r][c];
+  if (val !== 0) {
+    boardEl.querySelectorAll('.cell').forEach(function(el) {
+      var er = +el.getAttribute('data-row'), ec = +el.getAttribute('data-col');
+      var ev = userBoard[er][ec] || puzzle[er][ec];
+      if (ev === val) el.classList.add('highlight');
+    });
+  }
+  var sel = getCell(r, c);
+  if (sel) sel.classList.add('selected');
+}
+
+function updateCellDisplay(r, c) {
+  var cell = getCell(r, c);
+  if (!cell) return;
+  var val = userBoard[r][c];
+  cell.classList.remove('error', 'correct', 'hint');
+  if (val === 0) {
+    cell.textContent = '';
+  } else if (val === solution[r][c]) {
+    cell.textContent = val;
+    cell.classList.add('correct');
+  } else {
+    cell.textContent = val;
+    cell.classList.add('error');
+  }
+}
+
+function inputNumber(n) {
+  if (!selectedCell || gameOver) return;
+  var r = selectedCell.r, c = selectedCell.c;
+  if (puzzle[r][c] !== 0) return;
+  var cell = getCell(r, c);
+  if (cell.classList.contains('hint')) return;
+
+  if (n === 0) {
+    userBoard[r][c] = 0;
+    cell.textContent = '';
+    cell.classList.remove('error', 'correct', 'hint');
+    highlight(r, c);
+    return;
+  }
+
+  userBoard[r][c] = n;
+  updateCellDisplay(r, c);
+  highlight(r, c);
+
+  if (n !== solution[r][c]) {
+    mistakes++;
+    mistakeEl.textContent = mistakes + ' / ' + maxMistakes;
+    if (mistakes >= maxMistakes) {
+      gameOver = true;
+      stopTimer();
+      overlayMsg.textContent = '오류가 ' + maxMistakes + '번 발생하여 게임 오버!';
+      overlay.classList.add('show');
+    }
+  } else {
+    checkWin();
+  }
+}
+
+function checkWin() {
+  for (var r = 0; r < 9; r++)
+    for (var c = 0; c < 9; c++) {
+      var v = userBoard[r][c] || puzzle[r][c];
+      if (v !== solution[r][c]) return;
+    }
+  gameOver = true;
+  stopTimer();
+  var m = timerSec / 60 | 0, s = timerSec % 60;
+  overlayMsg.textContent = '클리어 시간: ' + pad(m) + '분 ' + pad(s) + '초';
+  overlay.classList.add('show');
+}
+
+function giveHint() {
+  if (gameOver) return;
+  var empties = [];
+  for (var r = 0; r < 9; r++)
+    for (var c = 0; c < 9; c++)
+      if (puzzle[r][c] === 0 && userBoard[r][c] !== solution[r][c])
+        empties.push({r: r, c: c});
+  if (empties.length === 0) return;
+  var pick = empties[Math.random() * empties.length | 0];
+  userBoard[pick.r][pick.c] = solution[pick.r][pick.c];
+  var cell = getCell(pick.r, pick.c);
+  cell.textContent = solution[pick.r][pick.c];
+  cell.classList.remove('error', 'correct');
+  cell.classList.add('hint');
+  checkWin();
+}
+
+function showSolution() {
+  stopTimer();
+  gameOver = true;
+  for (var r = 0; r < 9; r++)
+    for (var c = 0; c < 9; c++) {
+      if (puzzle[r][c] === 0) {
+        userBoard[r][c] = solution[r][c];
+        var cell = getCell(r, c);
+        cell.textContent = solution[r][c];
+        cell.classList.remove('error', 'hint');
+        cell.classList.add('correct');
+      }
+    }
+}
+
+function newGame() {
+  overlay.classList.remove('show');
+  gameOver = false;
+  mistakes = 0;
+  mistakeEl.textContent = '0 / ' + maxMistakes;
+  selectedCell = null;
+  diffLabelEl.textContent = diffLabel;
+  var data = createPuzzle(removeCount);
+  puzzle = data.puzzle;
+  solution = data.solution;
+  userBoard = Array.from({length: 9}, function() { return Array(9).fill(0); });
+  buildBoard();
+  startTimer();
+}
+
+document.addEventListener('keydown', function(e) {
+  if (!selectedCell) return;
+  var r = selectedCell.r, c = selectedCell.c;
+  if (e.key >= '1' && e.key <= '9') { inputNumber(+e.key); return; }
+  if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') { inputNumber(0); return; }
+  var moves = { ArrowUp: [-1,0], ArrowDown: [1,0], ArrowLeft: [0,-1], ArrowRight: [0,1] };
+  if (moves[e.key]) {
+    var d = moves[e.key];
+    var nr = Math.min(8, Math.max(0, r + d[0]));
+    var nc = Math.min(8, Math.max(0, c + d[1]));
+    selectCell(nr, nc);
+    e.preventDefault();
+  }
+});
+
+document.querySelectorAll('.diff-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.diff-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    removeCount = +btn.getAttribute('data-remove');
+    diffLabel = btn.textContent;
+    newGame();
+  });
+});
+
+document.querySelectorAll('.num-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() { inputNumber(+btn.getAttribute('data-n')); });
+});
+
+document.getElementById('btn-new').addEventListener('click', newGame);
+document.getElementById('btn-hint').addEventListener('click', giveHint);
+document.getElementById('btn-solve').addEventListener('click', showSolution);
+document.getElementById('overlay-new').addEventListener('click', newGame);
+
+newGame();
+</script>
+</body>
+</html>
